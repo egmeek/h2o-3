@@ -376,7 +376,7 @@ public class XGBoostTest extends TestUtil {
   }
 
   @Test
-  public void ProstateRegressionCars() {
+  public void RegressionCars() {
     Frame tfr = null;
     Frame trainFrame = null;
     Frame testFrame = null;
@@ -396,15 +396,17 @@ public class XGBoostTest extends TestUtil {
       testFrame = (Frame)ksplits[1].get();
 
       // define special columns
-      String response = "cylinders";
-//      String weight = null;
-//      String fold = null;
+//      String response = "cylinders"; // passes
+      String response = "economy (mpg)"; //fails
 
       XGBoostModel.XGBoostParameters parms = new XGBoostModel.XGBoostParameters();
       parms._train = trainFrame._key;
       parms._valid = testFrame._key;
       parms._response_column = response;
       parms._ignored_columns = new String[]{"name"};
+//      parms._dmatrix_type = XGBoostModel.XGBoostParameters.DMatrixType.dense;
+//      parms._backend = XGBoostModel.XGBoostParameters.Backend.cpu;
+//      parms._tree_method = XGBoostModel.XGBoostParameters.TreeMethod.exact;
 
       model = new hex.tree.xgboost.XGBoost(parms).trainModel().get();
       Log.info(model);

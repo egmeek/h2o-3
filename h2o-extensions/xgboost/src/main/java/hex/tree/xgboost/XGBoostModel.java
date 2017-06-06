@@ -305,8 +305,10 @@ public class XGBoostModel extends Model<XGBoostModel, XGBoostModel.XGBoostParame
     float[] weights = data.getWeight();
     if (_output.nclasses()==1) {
       double[] dpreds = new double[preds.length];
-      for (int j = 0; j < dpreds.length; ++j)
+      for (int j = 0; j < dpreds.length; ++j) {
         dpreds[j] = preds[j][0];
+        assert(!Double.isNaN(dpreds[j])) : "Error: XGBoost predicted NAs.";
+      }
 //      if (weights.length>0)
 //        for (int j = 0; j < dpreds.length; ++j)
 //          assert weights[j] == 1.0;
