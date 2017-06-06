@@ -376,6 +376,61 @@ public class XGBoostTest extends TestUtil {
   }
 
   @Test
+  public void ProstateRegressionCars() {
+    Frame tfr = null;
+    Frame trainFrame = null;
+    Frame testFrame = null;
+    Frame preds = null;
+    XGBoostModel model = null;
+    Scope.enter();
+    try {
+      // Parse frame into H2O
+      tfr = parse_test_file("./smalldata/junit/cars.csv");
+      DKV.put(tfr);
+
+      // split into train/test
+      SplitFrame sf = new SplitFrame(tfr, new double[] { 0.7, 0.3 }, null);
+      sf.exec().get();
+      Key[] ksplits = sf._destination_frames;
+      trainFrame = (Frame)ksplits[0].get();
+      testFrame = (Frame)ksplits[1].get();
+
+      // define special columns
+      String response = "cylinders";
+//      String weight = null;
+//      String fold = null;
+
+      XGBoostModel.XGBoostParameters parms = new XGBoostModel.XGBoostParameters();
+      parms._train = trainFrame._key;
+      parms._valid = testFrame._key;
+      parms._response_column = response;
+      parms._ignored_columns = new String[]{"name"};
+
+      model = new hex.tree.xgboost.XGBoost(parms).trainModel().get();
+      Log.info(model);
+
+      preds = model.score(testFrame);
+      Assert.assertTrue(model.testJavaScoring(testFrame, preds, 1e-6));
+      Assert.assertEquals(
+          ((ModelMetricsRegression)model._output._validation_metrics).mae(),
+          ModelMetricsRegression.make(preds.anyVec(), testFrame.vec(response), DistributionFamily.gaussian).mae(),
+          1e-5
+      );
+      Assert.assertTrue(preds.anyVec().sigma() > 0);
+
+    } finally {
+      Scope.exit();
+      if (trainFrame!=null) trainFrame.remove();
+      if (testFrame!=null) testFrame.remove();
+      if (tfr!=null) tfr.remove();
+      if (preds!=null) preds.remove();
+      if (model!=null) {
+        model.delete();
+      }
+    }
+  }
+
+  @Test
   public void ProstateRegression() {
     Frame tfr = null;
     Frame trainFrame = null;
