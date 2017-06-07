@@ -63,9 +63,11 @@ public class AstTopNTest extends TestUtil {
 
 				try {
 						for (int index = 0; index < numRuns; index++) { // randomly choose 4 percentages to test
-								testPercent = checkPercent[_rand.nextInt(checkPercent.length)];
+					//			testPercent = checkPercent[_rand.nextInt(checkPercent.length)];
+								testPercent=1;
 								boolean[] runTest = {false, false, false, false};
-								runTest[_rand.nextInt(4)] = true;  // choose one out of 4 to run
+			//					runTest[_rand.nextInt(4)] = true;  // choose one out of 4 to run
+								runTest[0] = true;
 								int testIndex = 0;
 								Log.info("Percentage is " + testPercent);
 								if (runTest[testIndex++]) {

@@ -1,12 +1,15 @@
 package water.rapids.ast.prims.reducers;
 
+import water.DKV;
+import water.H2O;
+import water.Key;
 import water.MRTask;
 import water.fvec.*;
-import water.*;
 import water.rapids.Env;
 import water.rapids.ast.AstPrimitive;
 import water.rapids.ast.AstRoot;
 import water.rapids.vals.ValFrame;
+import water.util.Log;
 
 import java.io.Serializable;
 import java.util.PriorityQueue;
@@ -67,7 +70,8 @@ public class AstTopN extends AstPrimitive {
 
 		public class GrabTopNPQ<E extends Comparable<E>> extends MRTask<GrabTopNPQ<E>> {
 				final String[] _columnName;   // name of column that we are grabbing top N for
-				PriorityQueue _sortQueue;
+				long[] _rowIndices;							// store row indices of values we grab
+				E[] _values;															// store values sorted by PriorityQueue
 				Frame _sortedOut;   // store the final result of sorting
 				final int _rowSize;   // number of top or bottom rows to keep
 				final boolean _increasing;  // sort with Top values first if true.
@@ -81,40 +85,55 @@ public class AstTopN extends AstPrimitive {
 
 				@Override
 				public void map(Chunk cs) {
-						_sortQueue = new PriorityQueue<RowValue<E>>(); // instantiate a priority queue
+						PriorityQueue sortQueue = new PriorityQueue<RowValue<E>>(); // instantiate a priority queue
 						_csLong = cs instanceof C8Chunk;
 						long startRow = cs.start();           // absolute row offset
 
 						for (int rowIndex = 0; rowIndex < cs._len; rowIndex++) {  // stuff our chunks into priorityQueue
 								long absRowIndex = rowIndex + startRow;
 								if (!cs.isNA(rowIndex)) { // skip NAN values
-										addOneValue(cs, rowIndex, absRowIndex, _sortQueue);
+										addOneValue(cs, rowIndex, absRowIndex, sortQueue);
+								}
+						}
+						copyPQ2Arry(sortQueue);
+				}
+
+				public void copyPQ2Arry(PriorityQueue sortQueue) {
+						//copy values on PQ into arrays in sorted order
+						int qSize = sortQueue.size();
+						_rowIndices = new long[qSize];
+						_values = (E[]) new Object[qSize];
+
+						if (_increasing) {
+								for (int index = 0; index < qSize; index++) {
+										RowValue<E> tempPairs = (RowValue<E>) sortQueue.peek();
+										_rowIndices[index] = tempPairs.getRow();
+										_values[index] = tempPairs.getValue();
+								}
+						} else {
+								for (int index = qSize-1; index>=0; index--) {
+										RowValue<E> tempPairs = (RowValue<E>) sortQueue.peek();
+										_rowIndices[index] = tempPairs.getRow();
+										_values[index] = tempPairs.getValue();
 								}
 						}
 				}
 
 				@Override
 				public void reduce(GrabTopNPQ<E> other) {
-						this._sortQueue.addAll(other._sortQueue);
-
-						int sizesToReduce = this._sortQueue.size() - _rowSize;
-						if (sizesToReduce > 0) {
-								for (int index = 0; index < sizesToReduce; index++)
-										this._sortQueue.poll();
-						}
+						Log.info("Will do merge sort");
 				}
 
 				@Override
 				public void postGlobal() {  // copy the sorted heap into a vector and make a frame out of it.
 						Vec[] xvecs = new Vec[2];   // final output frame will have two chunks, original row index, top/bottom values
-						long actualRowOutput = min(_rowSize, _sortQueue.size()); // due to NAs, may not have enough rows to return
+						long actualRowOutput = min(_rowSize, _values.length); // due to NAs, may not have enough rows to return
 						for (int index = 0; index < xvecs.length; index++)
 								xvecs[index] = Vec.makeZero(actualRowOutput);
 
 						for (int index = 0; index < actualRowOutput; index++) {
-								RowValue transport = (RowValue) this._sortQueue.poll();
-								xvecs[0].set(index, transport.getRow());
-								xvecs[1].set(index, _csLong ? (long) transport.getValue() : (Double) transport.getValue());
+								xvecs[0].set(index, _rowIndices[index]);
+								xvecs[1].set(index, _csLong ? (Long) _values[index] : (Double) _values[index]);
 						}
 						_sortedOut = new Frame(_columnName, xvecs);
 				}
@@ -145,7 +164,7 @@ public class AstTopN extends AstPrimitive {
 		the value.
 			*/
 		public class RowValue<E extends Comparable<E>> implements Comparable<RowValue<E>>, Serializable {
-				private Long _rowIndex;
+				private long _rowIndex;
 				private E _value;
 				boolean _increasing;  // true if grabbing for top N, false for bottom N
 
