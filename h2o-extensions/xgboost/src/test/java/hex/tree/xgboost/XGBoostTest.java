@@ -18,6 +18,7 @@ import water.DKV;
 import water.Key;
 import water.Scope;
 import water.TestUtil;
+import water.exceptions.H2OModelBuilderIllegalArgumentException;
 import water.fvec.Frame;
 import water.util.Log;
 
@@ -375,7 +376,7 @@ public class XGBoostTest extends TestUtil {
     }
   }
 
-  @Test
+  @Test(expected = H2OModelBuilderIllegalArgumentException.class)
   public void RegressionCars() {
     Frame tfr = null;
     Frame trainFrame = null;
@@ -397,7 +398,7 @@ public class XGBoostTest extends TestUtil {
 
       // define special columns
 //      String response = "cylinders"; // passes
-      String response = "economy (mpg)"; //fails
+      String response = "economy (mpg)"; //Expected to fail - contains NAs
 
       XGBoostModel.XGBoostParameters parms = new XGBoostModel.XGBoostParameters();
       parms._train = trainFrame._key;

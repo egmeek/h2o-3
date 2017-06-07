@@ -362,6 +362,10 @@ public class XGBoost extends ModelBuilder<XGBoostModel,XGBoostModel.XGBoostParam
    *  Validate the learning rate and distribution family. */
   @Override public void init(boolean expensive) {
     super.init(expensive);
+    if (expensive) {
+      if (_response.naCnt() > 0)
+        error("_response_column", "Response contains missing values (NAs) - not supported by XGBoost.");
+    }
 
     // Initialize response based on given distribution family.
     // Regression: initially predict the response mean
