@@ -34,7 +34,7 @@ public class StackedEnsembleTest extends TestUtil {
         basicEnsemble("./smalldata/junit/test_tree_minmax.csv",
                 new StackedEnsembleTest.PrepData() { int prep(Frame fr) { return fr.find("response"); }
                 },
-                false, DistributionFamily.bernoulli, false);
+                false, DistributionFamily.bernoulli, true);
 
         basicEnsemble("./smalldata/logreg/prostate.csv",
                 new StackedEnsembleTest.PrepData() { int prep(Frame fr) { fr.remove("ID").remove(); return fr.find("CAPSULE"); }
