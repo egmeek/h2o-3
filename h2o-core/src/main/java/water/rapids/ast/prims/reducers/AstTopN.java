@@ -70,6 +70,9 @@ public class AstTopN extends AstPrimitive {
 		public class GrabTopNPQ<E extends Comparable<E>> extends MRTask<GrabTopNPQ<E>> {
 				final String[] _columnName;   // name of column that we are grabbing top N for
 				PriorityQueue _sortQueue;
+				long[] _rowIndices;		// store original row indices of values that are grabbed
+				long[] _lValues;									// store the grabbed values
+				double[] _dValues;		// store grabbed longs
 				Frame _sortedOut;   // store the final result of sorting
 				final int _rowSize;   // number of top or bottom rows to keep
 				final boolean _increasing;  // sort with Top values first if true.
@@ -93,7 +96,31 @@ public class AstTopN extends AstPrimitive {
 										addOneValue(cs, rowIndex, absRowIndex, _sortQueue);
 								}
 						}
+
+						// copy the PQ into the corresponding arrays
+
 				}
+
+/*				public void copyPQ2Arry(PriorityQueue sortQueue) {
+						//copy values on PQ into arrays in sorted order
+						int qSize = sortQueue.size();
+						_rowIndices = new long[qSize];
+						_values = (E[]) new Object[qSize];
+
+						if (_increasing) {
+								for (int index = 0; index < qSize; index++) {
+										RowValue<E> tempPairs = (RowValue<E>) sortQueue.peek();
+										_rowIndices[index] = tempPairs.getRow();
+										_values[index] = tempPairs.getValue();
+								}
+						} else {
+								for (int index = qSize-1; index>=0; index--) {
+										RowValue<E> tempPairs = (RowValue<E>) sortQueue.peek();
+										_rowIndices[index] = tempPairs.getRow();
+										_values[index] = tempPairs.getValue();
+								}
+						}
+				}*/
 
 				@Override
 				public void reduce(GrabTopNPQ<E> other) {
