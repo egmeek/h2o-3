@@ -10,7 +10,6 @@ import water.rapids.ast.AstPrimitive;
 import water.rapids.ast.AstRoot;
 import water.rapids.vals.ValFrame;
 
-import java.io.Serializable;
 import java.util.PriorityQueue;
 
 import static java.lang.StrictMath.min;
@@ -173,7 +172,7 @@ public class AstTopN extends AstPrimitive {
 		corresponding value.  Implemented the compareTo function and comparison is performed on
 		the value.
 			*/
-		public class RowValue<E extends Comparable<E>> implements Comparable<RowValue<E>>, Serializable {
+		public class RowValue<E extends Comparable<E>> implements Comparable<RowValue<E>> {
 				private long _rowIndex;
 				private E _value;
 				boolean _increasing;  // true if grabbing for top N, false for bottom N
