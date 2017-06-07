@@ -20,7 +20,7 @@ public class AutoMLTest extends TestUtil {
   }
 
   @Test public void carsTest() {
-    runAutoML("./smalldata/junit/cars.csv","economy (mpg)",20);
+    runAutoML("./smalldata/junit/cars.csv","cylinders",20);
   }
 
   @Test public void irisTest() {runAutoML("./smalldata/iris/iris.csv","C5",20);}
