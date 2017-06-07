@@ -1,10 +1,8 @@
 package water.rapids.ast.prims.reducers;
 
 import water.MRTask;
-import water.fvec.C8Chunk;
-import water.fvec.Chunk;
-import water.fvec.Frame;
-import water.fvec.Vec;
+import water.fvec.*;
+import water.*;
 import water.rapids.Env;
 import water.rapids.ast.AstPrimitive;
 import water.rapids.ast.AstRoot;
@@ -47,15 +45,23 @@ public class AstTopN extends AstPrimitive {
 		@Override
 		public ValFrame apply(Env env, Env.StackHelp stk, AstRoot[] asts) { // implementation with PriorityQueue
 				Frame frOriginal = stk.track(asts[1].exec(env)).getFrame(); // get the 2nd argument and convert it to a Frame
+				// break into multiple chunks if needed
+				if ((frOriginal.anyVec().nChunks()==1) && (frOriginal.numRows() > 1000)) {
+						Key rebalancedKey = Key.make();
+						RebalanceDataSet rb = new RebalanceDataSet(frOriginal, rebalancedKey, 4);
+						H2O.submitTask(rb);
+						rb.join();
+						frOriginal = DKV.get(rebalancedKey).get();
+				}
 				int colIndex = (int) stk.track(asts[2].exec(env)).getNum();     // column index of interest
 				double nPercent = stk.track(asts[3].exec(env)).getNum();        //  top or bottom percentage of row to return
 				int getBottomN = (int) stk.track(asts[4].exec(env)).getNum();   // 0, return top, 1 return bottom percentage
-				int totColumns = frOriginal.numCols();
 				long numRows = Math.round(nPercent * 0.01 * frOriginal.numRows()); // number of rows to return
 
 				String[] finalColumnNames = {"Original_Row_Indices", frOriginal.name(colIndex)}; // set output frame names
 				GrabTopNPQ grabTask = new GrabTopNPQ(finalColumnNames, numRows, (getBottomN == 0));
 				grabTask.doAll(frOriginal.vec(colIndex));
+				frOriginal.remove();
 				return new ValFrame(grabTask._sortedOut);
 		}
 
@@ -77,7 +83,7 @@ public class AstTopN extends AstPrimitive {
 				public void map(Chunk cs) {
 						_sortQueue = new PriorityQueue<RowValue<E>>(); // instantiate a priority queue
 						_csLong = cs instanceof C8Chunk;
-						Long startRow = cs.start();           // absolute row offset
+						long startRow = cs.start();           // absolute row offset
 
 						for (int rowIndex = 0; rowIndex < cs._len; rowIndex++) {  // stuff our chunks into priorityQueue
 								long absRowIndex = rowIndex + startRow;
@@ -108,7 +114,7 @@ public class AstTopN extends AstPrimitive {
 						for (int index = 0; index < actualRowOutput; index++) {
 								RowValue transport = (RowValue) this._sortQueue.poll();
 								xvecs[0].set(index, transport.getRow());
-								xvecs[1].set(index, _csLong ? (Long) transport.getValue() : (Double) transport.getValue());
+								xvecs[1].set(index, _csLong ? (long) transport.getValue() : (Double) transport.getValue());
 						}
 						_sortedOut = new Frame(_columnName, xvecs);
 				}
